@@ -13,11 +13,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.4.22 <0.6;
+pragma solidity =0.5.17;
 
-contract WETH9 {
-    string public name     = "Wrapped Ether";
-    string public symbol   = "WETH";
+import "./ArbInfo.sol";
+import "./ArbOwnerPublic.sol";
+
+contract WAPE {
+    string public name     = "Wrapped ApeCoin";
+    string public symbol   = "WAPE";
     uint8  public decimals = 18;
 
     event  Approval(address indexed src, address indexed guy, uint wad);
@@ -25,23 +28,47 @@ contract WETH9 {
     event  Deposit(address indexed dst, uint wad);
     event  Withdrawal(address indexed src, uint wad);
 
-    mapping (address => uint)                       public  balanceOf;
+    struct Balance {
+      uint _shares;
+      uint _fixed;
+    }
+
+    mapping (address => Balance)                    public  balanceValues;
     mapping (address => mapping (address => uint))  public  allowance;
 
+    // constructor needs to be public as the solidity version is old
+    constructor() public {
+        ArbInfo(address(0x0000000000000000000000000000000000000065)).configureAutomaticYield();
+    }
     function() external payable {
         deposit();
     }
+    function balanceOf(address addr) public view returns (uint) {
+        return balance(addr, ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice());
+    }
+    function balance(address addr, uint64 sharePrice) internal view returns (uint) {
+        Balance storage bal = balanceValues[addr];
+        return bal._shares * sharePrice + bal._fixed;
+    }
+    function updateBalance(address addr, uint delta, uint64 sharePrice) internal {
+        uint value = balance(addr, sharePrice);
+        // unchecked - solidity version < 0.8
+        value += delta;
+        balanceValues[addr] = Balance({_shares: value/sharePrice, _fixed: value%sharePrice});
+    }
     function deposit() public payable {
-        balanceOf[msg.sender] += msg.value;
+        updateBalance(msg.sender, msg.value, ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice());
         emit Deposit(msg.sender, msg.value);
     }
     function withdraw(uint wad) public {
-        require(balanceOf[msg.sender] >= wad);
-        balanceOf[msg.sender] -= wad;
+        uint64 sharePrice = ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice();
+        require(balance(msg.sender, sharePrice) >= wad);
+        updateBalance(msg.sender, -wad, sharePrice);
         msg.sender.transfer(wad);
         emit Withdrawal(msg.sender, wad);
     }
 
+    // totalSupply will be slightly larger than the actual supply due to rounding errors but it's close enough
     function totalSupply() public view returns (uint) {
         return address(this).balance;
     }
@@ -60,19 +87,31 @@ contract WETH9 {
         public
         returns (bool)
     {
-        require(balanceOf[src] >= wad);
+        uint64 sharePrice = ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice();
+        require(balance(src, sharePrice) >= wad);
 
         if (src != msg.sender && allowance[src][msg.sender] != uint(-1)) {
             require(allowance[src][msg.sender] >= wad);
             allowance[src][msg.sender] -= wad;
         }
 
-        balanceOf[src] -= wad;
-        balanceOf[dst] += wad;
+        updateBalance(src, -wad, sharePrice);
+        updateBalance(dst, wad, sharePrice);
 
         emit Transfer(src, dst, wad);
 
         return true;
+    }
+
+    // TODO: optimize these functions
+    function withdrawAll() public {
+        withdraw(balanceOf(msg.sender));
+    }
+    function transferAll(address dst) public returns (bool) {
+        return transfer(dst, balanceOf(msg.sender));
+    }
+    function transferAllFrom(address src, address dst) public returns (bool) {
+        return transferFrom(src, dst, balanceOf(src));
     }
 }
 
