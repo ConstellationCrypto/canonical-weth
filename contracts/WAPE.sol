@@ -20,6 +20,10 @@ import {ArbOwnerPublic} from "./ArbOwnerPublic.sol";
 import {IERC20Metadata} from  "./IERC20Metadata.sol";
 import {IWETH9} from "./IWETH9.sol";
 
+error InsufficientBalance();
+error InsufficientAllowance();
+error WithdrawalFailed();
+
 contract WAPE is IERC20Metadata, IWETH9 {
     string public constant name     = "Wrapped ApeCoin";
     string public constant symbol   = "WAPE";
@@ -43,27 +47,18 @@ contract WAPE is IERC20Metadata, IWETH9 {
         deposit();
     }
     function balanceOf(address addr) public view returns (uint) {
-        return balance(addr, ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice());
-    }
-    function balance(address addr, uint64 sharePrice) internal view returns (uint) {
-        Balance storage bal = balanceValues[addr];
-        return bal._shares * sharePrice + bal._fixed;
-    }
-    function updateBalance(address addr, int delta, uint64 sharePrice) internal {
-        uint value = balance(addr, sharePrice);
-        unchecked { value += uint(delta); }
-        balanceValues[addr] = Balance({_shares: value/sharePrice, _fixed: value%sharePrice});
+        return _balance(addr, ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice());
     }
     function deposit() public payable {
-        updateBalance(msg.sender, int(msg.value), ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice());
+        _updateBalance(msg.sender, int(msg.value), ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice());
         emit Deposit(msg.sender, msg.value);
     }
     function withdraw(uint wad) public {
         uint64 sharePrice = ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice();
-        require(balance(msg.sender, sharePrice) >= wad);
-        updateBalance(msg.sender, -int(wad), sharePrice);
+        require(_balance(msg.sender, sharePrice) >= wad, InsufficientBalance());
+        _updateBalance(msg.sender, -int(wad), sharePrice);
         (bool success, ) = msg.sender.call{value: wad}("");
-        require(success, "FAIL_TRANSFER");
+        require(success, WithdrawalFailed());
         emit Withdrawal(msg.sender, wad);
     }
 
@@ -87,22 +82,21 @@ contract WAPE is IERC20Metadata, IWETH9 {
         returns (bool)
     {
         uint64 sharePrice = ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice();
-        require(balance(src, sharePrice) >= wad);
+        require(_balance(src, sharePrice) >= wad, InsufficientBalance());
 
         if (src != msg.sender && allowance[src][msg.sender] != type(uint).max) {
-            require(allowance[src][msg.sender] >= wad);
+            require(allowance[src][msg.sender] >= wad, InsufficientAllowance());
             allowance[src][msg.sender] -= wad;
         }
 
-        updateBalance(src, -int(wad), sharePrice);
-        updateBalance(dst, int(wad), sharePrice);
+        _updateBalance(src, -int(wad), sharePrice);
+        _updateBalance(dst, int(wad), sharePrice);
 
         emit Transfer(src, dst, wad);
 
         return true;
     }
 
-    // TODO: optimize these functions
     function withdrawAll() public {
         withdraw(balanceOf(msg.sender));
     }
@@ -111,6 +105,16 @@ contract WAPE is IERC20Metadata, IWETH9 {
     }
     function transferAllFrom(address src, address dst) public returns (bool) {
         return transferFrom(src, dst, balanceOf(src));
+    }
+
+    function _balance(address addr, uint64 sharePrice) internal view returns (uint) {
+        Balance storage bal = balanceValues[addr];
+        return bal._shares * sharePrice + bal._fixed;
+    }
+    function _updateBalance(address addr, int delta, uint64 sharePrice) internal {
+        uint value = _balance(addr, sharePrice);
+        unchecked { value += uint(delta); }
+        balanceValues[addr] = Balance({_shares: value/sharePrice, _fixed: value%sharePrice});
     }
 }
 
