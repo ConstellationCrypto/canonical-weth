@@ -20,11 +20,13 @@ import {ArbOwnerPublic} from "./ArbOwnerPublic.sol";
 import {IERC20Metadata} from  "./IERC20Metadata.sol";
 import {IWETH9} from "./IWETH9.sol";
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 error InsufficientBalance();
 error InsufficientAllowance();
 error WithdrawalFailed();
 
-contract WAPE is IERC20Metadata, IWETH9 {
+contract WAPE is IERC20Metadata, IWETH9, Initializable {
     string public constant name     = "Wrapped ApeCoin";
     string public constant symbol   = "WAPE";
     uint8  public constant decimals = 18;
@@ -40,9 +42,10 @@ contract WAPE is IERC20Metadata, IWETH9 {
     mapping (address => Balance)                    public  balanceValues;
     mapping (address => mapping (address => uint))  public  allowance;
 
-    constructor() {
+    function initialize() initializer public {
         ArbInfo(address(0x0000000000000000000000000000000000000065)).configureAutomaticYield();
     }
+
     receive() external payable {
         deposit();
     }
