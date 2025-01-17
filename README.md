@@ -1,8 +1,8 @@
-# nrbWAPE (Wrapped ApeCoin)
+# yWAPE (Yield-bearing Wrapped ApeCoin)
 
 ## Overview
 
-nrbWAPE is a yield-bearing ERC20 wrapper for native tokens, specifically designed for ApeCoin. It allows users to deposit native tokens and receive shares that automatically accrue yield through the Nitro Native Yield module. The contract implements the WETH9 interface while adding yield-bearing capabilities.
+yWAPE is a yield-bearing ERC20 wrapper for native tokens, specifically designed for APE. It allows users to deposit native tokens and receive shares that automatically accrue yield through the ApeChain's Nitro Native Yield module. The contract implements the WETH9 interface while adding yield-bearing capabilities.
 
 ## Key Features
 
@@ -98,7 +98,7 @@ wape.withdraw(recipientAddress, shareAmount);
 sequenceDiagram
     participant User
     participant Other as Other Address
-    participant WAPE as nrbWAPE Contract
+    participant WAPE as yWAPE Contract
     participant Nitro as Nitro Native Yield
 
     Note over WAPE: Contract Deployment

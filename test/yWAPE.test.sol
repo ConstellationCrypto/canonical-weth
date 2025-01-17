@@ -2,7 +2,7 @@
 pragma solidity =0.8.28;
 
 import "forge-std/Test.sol";
-import "../src/nrbWAPE.sol";
+import "../src/yWAPE.sol";
 import "../src/ArbInfo.sol";
 
 contract MockArbInfo {
@@ -11,8 +11,8 @@ contract MockArbInfo {
     function configureAutomaticYield() external {}
 }
 
-contract nrbWAPETest is Test {
-    nrbWAPE public token;
+contract yWAPETest is Test {
+    yWAPE public token;
     MockArbInfo public arbInfo;
     address public alice = address(0x1);
     address public bob = address(0x2);
@@ -25,7 +25,7 @@ contract nrbWAPETest is Test {
 
     function setUp() public {
         arbInfo = new MockArbInfo();
-        token = new nrbWAPE(address(arbInfo));
+        token = new yWAPE(address(arbInfo));
 
         // Fund test accounts
         vm.deal(alice, INITIAL_BALANCE);
@@ -35,8 +35,8 @@ contract nrbWAPETest is Test {
     }
 
     function testMetadata() public view {
-        assertEq(token.name(), "Wrapped ApeCoin");
-        assertEq(token.symbol(), "WAPE");
+        assertEq(token.name(), "Yield-bearing Wrapped APE");
+        assertEq(token.symbol(), "yWAPE");
         assertEq(token.decimals(), 18);
     }
 

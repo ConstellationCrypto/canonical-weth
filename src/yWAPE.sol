@@ -10,12 +10,12 @@ error ZeroDeposit();
 error ZeroAddress();
 
 /**
- * @title nrbWAPE
+ * @title yWAPE
  * @author Constellation Labs
  * @notice A yield-bearing ERC20 wrapper for yield-bearing native tokens.
  * @dev This contract is a standard ERC20 where shares represent a proportional share of the underlying balance of the contract. The contract is configured to automatically receive yield from the Nitro Native Yield module and distribute it to all holders. It is intended to be used as a wrapper for native tokens, allowing for yield-bearing deposits and withdrawals.
  */
-contract nrbWAPE is ERC20, IWETH9 {
+contract yWAPE is ERC20, IWETH9 {
     event Deposit(address indexed dst, uint256 wad);
     event Withdrawal(address indexed src, uint256 wad, uint256 nativeAmount);
 
@@ -28,7 +28,7 @@ contract nrbWAPE is ERC20, IWETH9 {
      * @return The name of the token
      */
     function name() public pure override returns (string memory) {
-        return "Wrapped ApeCoin";
+        return "Yield-bearing Wrapped APE";
     }
 
     /**
@@ -36,7 +36,7 @@ contract nrbWAPE is ERC20, IWETH9 {
      * @return The symbol of the token
      */
     function symbol() public pure override returns (string memory) {
-        return "WAPE";
+        return "yWAPE";
     }
 
     /**
