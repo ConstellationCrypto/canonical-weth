@@ -13,11 +13,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity =0.8.26;
+pragma solidity =0.8.28;
 
 import {ArbInfo} from "./ArbInfo.sol";
 import {ArbOwnerPublic} from "./ArbOwnerPublic.sol";
-import {IERC20Metadata} from  "./IERC20Metadata.sol";
+import {IERC20Metadata} from "./IERC20Metadata.sol";
 import {IWETH9} from "./IWETH9.sol";
 
 error InsufficientBalance();
@@ -25,72 +25,77 @@ error InsufficientAllowance();
 error WithdrawalFailed();
 
 contract WAPE is IERC20Metadata, IWETH9 {
-    string public constant name     = "Wrapped ApeCoin";
-    string public constant symbol   = "WAPE";
-    uint8  public constant decimals = 18;
+    string public constant name = "Wrapped ApeCoin";
+    string public constant symbol = "WAPE";
+    uint8 public constant decimals = 18;
 
-    event  Deposit(address indexed dst, uint wad);
-    event  Withdrawal(address indexed src, uint wad);
+    event Deposit(address indexed dst, uint256 wad);
+    event Withdrawal(address indexed src, uint256 wad);
 
     struct Balance {
-      uint _shares;
-      uint _fixed;
+        uint256 _shares;
+        uint256 _fixed;
     }
 
-    mapping (address => Balance)                    public  balanceValues;
-    mapping (address => mapping (address => uint))  public  allowance;
+    mapping(address => Balance) public balanceValues;
+    mapping(address => mapping(address => uint256)) public allowance;
 
     constructor() {
         ArbInfo(address(0x0000000000000000000000000000000000000065)).configureAutomaticYield();
     }
+
     receive() external payable {
         deposit();
     }
-    function balanceOf(address addr) public view returns (uint) {
+
+    function balanceOf(address addr) public view returns (uint256) {
         return _balance(addr, ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice());
     }
+
     function deposit() public payable {
-        _updateBalance(msg.sender, int(msg.value), ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice());
+        _updateBalance(
+            msg.sender,
+            int256(msg.value),
+            ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice()
+        );
         emit Deposit(msg.sender, msg.value);
     }
-    function withdraw(uint wad) public {
+
+    function withdraw(uint256 wad) public {
         uint64 sharePrice = ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice();
         require(_balance(msg.sender, sharePrice) >= wad, InsufficientBalance());
-        _updateBalance(msg.sender, -int(wad), sharePrice);
-        (bool success, ) = msg.sender.call{value: wad}("");
+        _updateBalance(msg.sender, -int256(wad), sharePrice);
+        (bool success,) = msg.sender.call{value: wad}("");
         require(success, WithdrawalFailed());
         emit Withdrawal(msg.sender, wad);
     }
 
     // totalSupply will be slightly larger than the actual supply due to rounding errors but it's close enough
-    function totalSupply() public view returns (uint) {
+    function totalSupply() public view returns (uint256) {
         return address(this).balance;
     }
 
-    function approve(address guy, uint wad) public returns (bool) {
+    function approve(address guy, uint256 wad) public returns (bool) {
         allowance[msg.sender][guy] = wad;
         emit Approval(msg.sender, guy, wad);
         return true;
     }
 
-    function transfer(address dst, uint wad) public returns (bool) {
+    function transfer(address dst, uint256 wad) public returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(address src, address dst, uint wad)
-        public
-        returns (bool)
-    {
+    function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
         uint64 sharePrice = ArbOwnerPublic(address(0x000000000000000000000000000000000000006b)).getSharePrice();
         require(_balance(src, sharePrice) >= wad, InsufficientBalance());
 
-        if (src != msg.sender && allowance[src][msg.sender] != type(uint).max) {
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
             require(allowance[src][msg.sender] >= wad, InsufficientAllowance());
             allowance[src][msg.sender] -= wad;
         }
 
-        _updateBalance(src, -int(wad), sharePrice);
-        _updateBalance(dst, int(wad), sharePrice);
+        _updateBalance(src, -int256(wad), sharePrice);
+        _updateBalance(dst, int256(wad), sharePrice);
 
         emit Transfer(src, dst, wad);
 
@@ -100,24 +105,28 @@ contract WAPE is IERC20Metadata, IWETH9 {
     function withdrawAll() public {
         withdraw(balanceOf(msg.sender));
     }
+
     function transferAll(address dst) public returns (bool) {
         return transfer(dst, balanceOf(msg.sender));
     }
+
     function transferAllFrom(address src, address dst) public returns (bool) {
         return transferFrom(src, dst, balanceOf(src));
     }
 
-    function _balance(address addr, uint64 sharePrice) internal view returns (uint) {
+    function _balance(address addr, uint64 sharePrice) internal view returns (uint256) {
         Balance storage bal = balanceValues[addr];
         return bal._shares * sharePrice + bal._fixed;
     }
-    function _updateBalance(address addr, int delta, uint64 sharePrice) internal {
-        uint value = _balance(addr, sharePrice);
-        unchecked { value += uint(delta); }
-        balanceValues[addr] = Balance({_shares: value/sharePrice, _fixed: value%sharePrice});
+
+    function _updateBalance(address addr, int256 delta, uint64 sharePrice) internal {
+        uint256 value = _balance(addr, sharePrice);
+        unchecked {
+            value += uint256(delta);
+        }
+        balanceValues[addr] = Balance({_shares: value / sharePrice, _fixed: value % sharePrice});
     }
 }
-
 
 /*
                     GNU GENERAL PUBLIC LICENSE
