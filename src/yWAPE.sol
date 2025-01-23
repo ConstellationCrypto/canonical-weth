@@ -103,6 +103,7 @@ contract yWAPE is ERC20, IWETH9 {
      */
     function _deposit(address to, uint256 nativeAmount) internal {
         if (nativeAmount == 0) revert ZeroDeposit();
+        if (to == address(0)) revert ZeroAddress();
         uint256 sharesToMint = _nativeToShares(nativeAmount);
 
         _mint(to, sharesToMint);
