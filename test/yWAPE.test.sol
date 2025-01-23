@@ -289,6 +289,17 @@ contract yWAPETest is Test {
         }
     }
 
+    function testFuzzDeposit(uint256 amount) public {
+        amount = bound(amount, 0.0000001 ether, 1_000_000 ether);
+        vm.deal(alice, amount);
+        vm.prank(alice);
+        token.deposit{value: amount}();
+
+        assertEq(token.balanceOf(alice), amount);
+        assertEq(address(token).balance, amount);
+        assertEq(token.totalSupply(), amount);
+    }
+
     function testFuzzMultipleDeposits(uint256 amount1, uint256 amount2, uint256 yieldAmount) public {
         // Bound inputs to reasonable ranges
         amount1 = bound(amount1, 1, 100 ether);
@@ -425,5 +436,10 @@ contract yWAPETest is Test {
     function testRevertZeroDeposit() public {
         vm.expectRevert(ZeroDeposit.selector);
         token.deposit{value: 0}();
+    }
+
+    function testRevertZeroAddress() public {
+        vm.expectRevert(ZeroAddress.selector);
+        token.deposit{value: 0.5 ether}(address(0));
     }
 }
